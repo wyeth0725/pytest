@@ -1,55 +1,75 @@
-import pytest
-from collections import namedtuple
+from attr import attrs, attrib
 
-"""
-class Values:
-    def __init__(self):
-        self.column_a = "sleep"
-        self.column_b = 100
-        self.column_c = True
+class MISSING:
+    pass
 
-    def test_func(self):
-        return 404
+class XMLNode:
+    def to_xml_node():
+        build_sub()
 
-Task = namedtuple("test_task", ["column_a", "column_b", "column_c"])
-Task.__new__.__defaults__ = ("a", 0, False)
-try_data = (Task("sleep", 100, True),
-            Task("wake", 200, False),
-            Task("breakfast", -100, ),
-            Task("excercise", True),
-            Task())
+@attrs
+class Order(XMLNode):
+    a = attrib(MISSING)
+    b = attrib(MISSING)
+    order_lines = attrib(MISSING)
 
-attr_list = ("column_a", "column_b", "column_c")
-
-# このままだと全データでテストが実行されて失敗しまくる
-@pytest.mark.parametrize("tasks", try_data)
-def test_value(tasks):
-    val = Values()
-    for attr in attr_list:
-        assert getattr(val, attr) == getattr(tasks, attr)
-"""
-
-def test_mock(mocker):
-    import os
-    assert os.path.join("\\a\\b", "c\\d\\e") == "\\a\\b\\c\\d\\e"
-    with mocker.patch("os.path.join", return_value = "dummy"):
-        assert os.path.join("\\a\\b", "\\c\\d\\e")
-
-
-class TestCls:
-    a = 200
+    def build_sub(self):
+        order_lines = self.OrderLines(**self.order_lines)
+        order_lines.build_sub()
     
-    def b(self):
-        return 500
+    @attrs
+    class OrderLines(XMLNode):
+        order_line = attrib(MISSING)
 
-def test_mock_object(mocker):
-    assert TestCls.a == 200
-    with mocker.patch.object(TestCls, "a"):
-        TestCls.a = 300
-        assert TestCls.a == 300
-    TestCls.a == 400
-    assert TestCls.a == 300
-    mock = mocker.MagicMock(return_value=1000)
-    with mocker.patch.object(TestCls, "b", mock):
-        assert TestCls.b() == 1000
-        
+        def build_sub(self):
+            if self.order_line:
+                for i in self.order_line:
+                    order_line = self.OrderLine(**i)
+                    order_line.build_sub()
+              
+        @attrs
+        class OrderLine(XMLNode):
+            item = attrib(MISSING)
+            person = attrib(MISSING)
+
+            def build_sub(self):
+                item = self.Item(**self.item)
+                item.build_sub()
+                person = self.Person(**self.person)
+                person.build_sub()
+            
+            @attrs
+            class Item(XMLNode):
+                c = attrib(MISSING)
+                d = attrib(MISSING)
+
+                def build_sub(self):
+                    print(self.c, self.d)
+            
+            @attrs
+            class Person(XMLNode):
+                e = attrib(MISSING)
+
+                def build_sub(self):
+                    print(self.e)
+                
+
+def order():
+    return {"a": 1, "b": 2, order_lines.__name__: order_lines()}
+
+def order_lines():
+    return {order_line.__name__: order_line()}
+
+def order_line():
+    return [{item.__name__: item(), person.__name__: person()}]
+
+def item():
+    return {"c": 3, "d": 4}
+
+def person():
+    return {"e": 5}
+
+if __name__ == "__main__":
+    dic = order()
+    o = Order(**dic)
+    o.build_sub()
